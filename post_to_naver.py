@@ -45,7 +45,6 @@ CONFIG = {
     "login_url": "https://nid.naver.com/nidlogin.login",
     "login_id_selector": (By.ID, "id"),
     "login_pw_selector": (By.ID, "pw"),
-    "login_submit_selector": (By.ID, "log.login"),
     "blog_write_url": "https://blog.naver.com/{blog_id}?Redirect=Write",
     "editor_iframe_selector": (By.ID, "mainFrame"),
     "title_area_selector": (By.CSS_SELECTOR, ".se-documentTitle .se-text-paragraph"),
@@ -110,7 +109,9 @@ def login(driver, naver_id, naver_pw):
     pw_field.click()
     pw_field.send_keys(naver_pw)
 
-    driver.find_element(*CONFIG["login_submit_selector"]).click()
+    # 로그인 버튼의 id/class는 네이버 쪽에서 자주 바뀌므로,
+    # 버튼을 직접 찾아 클릭하는 대신 비밀번호 입력창에서 Enter로 폼을 제출한다.
+    pw_field.send_keys(Keys.RETURN)
     time.sleep(2)
 
     wait_for_manual_verification(driver)
