@@ -123,6 +123,8 @@ def login(driver, naver_id, naver_pw):
         )
     except TimeoutException:
         print("[오류] 로그인 완료 여부를 확인하지 못했습니다. 브라우저 화면을 직접 확인해주세요.")
+        print(f"[진단] 현재 URL: {driver.current_url}")
+        print(f"[진단] 페이지 제목: {driver.title}")
         input("문제를 해결한 뒤 Enter... ")
 
 
@@ -131,7 +133,13 @@ def write_post(driver, blog_id, post):
     driver.get(url)
     wait = WebDriverWait(driver, 20)
 
-    wait.until(EC.frame_to_be_available_and_switch_to_it(CONFIG["editor_iframe_selector"]))
+    try:
+        wait.until(EC.frame_to_be_available_and_switch_to_it(CONFIG["editor_iframe_selector"]))
+    except TimeoutException:
+        print("[오류] 블로그 글쓰기 화면(iframe)을 찾지 못했습니다.")
+        print(f"[진단] 현재 URL: {driver.current_url}")
+        print(f"[진단] 페이지 제목: {driver.title}")
+        raise
 
     # "이어서 작성하시겠습니까" 같은 이전 글 팝업이 뜨면 취소하고 새 글로 시작
     try:
