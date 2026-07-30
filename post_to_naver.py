@@ -5,9 +5,11 @@
 1. posts/ 폴더에서 아직 발행하지 않은 글(.md)을 파일명 순서대로 하나 고른다.
 2. 브라우저를 열어 네이버에 로그인한다. (아이디/비번은 .env 에서 읽음. 코드에 하드코딩하지 않음)
 3. 블로그 글쓰기 페이지로 이동해 제목/본문을 채운다.
-4. 기본값(dry-run)은 마지막 "발행" 버튼을 누르기 직전에 멈춘다.
-   --publish 옵션을 줘야 실제로 발행 버튼까지 자동으로 클릭한다.
-5. 발행에 성공하면 해당 글 파일을 posts/published/ 로 옮겨서 다음 실행 때 중복 발행되지 않게 한다.
+4. 기본값은 아무 버튼도 누르지 않고 멈춘다(dry-run, 미리보기만).
+   --draft 옵션을 주면 "임시저장" 버튼을 눌러 비공개 임시저장으로 남긴다.
+   --publish 옵션을 주면 실제로 "발행" 버튼까지 눌러 공개 발행한다.
+5. --draft 또는 --publish로 성공하면 해당 글 파일을 posts/published/ 로 옮겨서
+   다음 실행 때 중복 처리되지 않게 한다.
 
 주의:
 - 네이버가 자동화 로그인을 의심해 보안문자(캡차)나 새로운 환경 인증을 띄우는 경우가 있다.
@@ -50,6 +52,9 @@ CONFIG = {
     "body_area_selector": (By.CSS_SELECTOR, ".se-component.se-text .se-text-paragraph"),
     "publish_open_selector": (By.CSS_SELECTOR, "button.publish_btn__m9KHH"),
     "publish_confirm_selector": (By.CSS_SELECTOR, "button.confirm_btn__WEaBq"),
+    # 텍스트 기반 셀렉터라 CSS 클래스(해시값)가 바뀌어도 비교적 안정적이지만,
+    # 그래도 실제 화면에서 버튼 문구가 다르면 F12로 확인해서 바꿔야 한다.
+    "save_draft_selector": (By.XPATH, "//button[contains(., '저장') and not(contains(., '자동'))]"),
 }
 
 
@@ -161,12 +166,26 @@ def publish_post(driver):
     time.sleep(2)
 
 
+def save_draft(driver):
+    """공개 발행 대신 비공개 임시저장 버튼을 누른다."""
+    wait = WebDriverWait(driver, 15)
+    save_btn = wait.until(EC.element_to_be_clickable(CONFIG["save_draft_selector"]))
+    save_btn.click()
+    time.sleep(2)
+
+
 def main():
     parser = argparse.ArgumentParser(description="네이버 블로그 자동 발행")
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--draft",
+        action="store_true",
+        help="비공개 임시저장 버튼까지 클릭한다. (공개 발행 아님)",
+    )
+    group.add_argument(
         "--publish",
         action="store_true",
-        help="실제로 발행 버튼까지 클릭한다. 지정하지 않으면 내용만 채우고 멈춘다(dry-run).",
+        help="실제로 발행 버튼까지 클릭해서 공개 발행한다.",
     )
     args = parser.parse_args()
 
@@ -201,8 +220,14 @@ def main():
             PUBLISHED_DIR.mkdir(parents=True, exist_ok=True)
             post_file.rename(PUBLISHED_DIR / post_file.name)
             print(f"발행 완료: {post_file.name}")
+        elif args.draft:
+            input("\n확인했다면 Enter를 눌러 임시저장합니다 (Ctrl+C로 취소 가능)... ")
+            save_draft(driver)
+            PUBLISHED_DIR.mkdir(parents=True, exist_ok=True)
+            post_file.rename(PUBLISHED_DIR / post_file.name)
+            print(f"임시저장 완료: {post_file.name} (공개 발행 아님, 블로그 관리자 페이지에서 확인)")
         else:
-            print("\n--publish 옵션이 없어 실제 발행은 하지 않았습니다. (dry-run)")
+            print("\n옵션이 없어 저장/발행은 하지 않았습니다. (dry-run, 미리보기만)")
             input("확인 후 Enter를 누르면 브라우저를 닫습니다... ")
 
     finally:
